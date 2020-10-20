@@ -1,0 +1,1 @@
+### A script checking if there is a new assgnment for any of my University courses
