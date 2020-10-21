@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup as bs
 import requests
+import time
 import os
 
 login_url = 'https://logowanie.pg.edu.pl/login?service=https%3A%2F%2Fenauczanie.pg.edu.pl%2Fmoodle%2Flogin%2Findex.php%3FauthCAS%3DCAS'
@@ -46,6 +47,7 @@ def change_in_course(new_links, path):
 
 def scrape_all_links(session, urls):
     change = False
+    message = ''
     for subject in urls:
         r = session.get(urls[subject])
         soup = bs(r.content, 'html.parser')
@@ -68,29 +70,36 @@ def scrape_all_links(session, urls):
                 f = open(path, 'a')
                 f.write(strlinks)
                 f.close()
-                print(f'CHANGE in {subject}!')
+                message += f'CHANGE in {subject}!\n'
                 change = True
         except FileNotFoundError:
                 print(f'Created {str(file_path)}')
                 f = open(path, 'a')
                 f.write(strlinks)
-                f.close()
-            
+                f.close() 
     if not change:
-        print('No changes since last time you used me :)')
+        message = 'No new assignments :)'
+    return message
 
 
 if __name__ == '__main__':
     login_data['username'] = input('Dawaj username:')
     login_data['password'] = input('teraz password:')
-
+    logged_in = False
     with requests.session() as s:
-        r = s.get(login_url)
         try:
-            soup = bs(r.content, 'html.parser')
-            login_data['execution'] = soup.find('input', attrs={'name':'execution'})['value']
-            r = s.post(login_url, data=login_data)
-            s.post(r.url, data=accept_after_login)
-            content_by_subject = scrape_all_links(s, subjects)
+            r = s.get(login_url)
+        except ConnectionError:
+            print('Check your internet connection!')
+        try:
+            if not logged_in:
+                soup = bs(r.content, 'html.parser')
+                login_data['execution'] = soup.find('input', attrs={'name':'execution'})['value']
+                r = s.post(login_url, data=login_data)
+                s.post(r.url, data=accept_after_login)
+                logged_in = True
         except AttributeError:
             print('Wrong username or password')
+        # scrape course sites
+        notification = scrape_all_links(s, subjects)
+        print(notification)
